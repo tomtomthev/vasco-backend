@@ -11,6 +11,16 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Root route to confirm the server is running
+app.get('/', (req, res) => {
+  res.send('Vasco backend is online and ready.');
+});
+
+// Dedicated health check endpoint for the platform
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'healthy' });
+});
+
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
