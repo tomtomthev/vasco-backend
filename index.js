@@ -1,24 +1,28 @@
 require('dotenv').config();
-console.log('OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'Set' : 'Not set'); // Debug line
-console.log('JWT_SECRET:', process.env.JWT_SECRET ? 'Set' : 'Not set'); // Debug line
+console.log('OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'Set' : 'Not set');
+console.log('JWT_SECRET:', process.env.JWT_SECRET ? 'Set' : 'Not set');
 
 const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
-
-// Try different import methods for OpenAI
-let OpenAI;
-try {
-  OpenAI = require('openai');
-  console.log('OpenAI library loaded successfully');
-} catch (error) {
-  console.error('Error loading OpenAI library:', error);
-  process.exit(1);
-}
+const OpenAI = require('openai');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// --- Sanity Checks ---
+if (!process.env.OPENAI_API_KEY) {
+  console.error('FATAL ERROR: OPENAI_API_KEY environment variable is not set.');
+  process.exit(1); // Exit if the API key is missing
+}
+
+// --- OpenAI Client Initialization ---
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+console.log('OpenAI client initialized successfully with V4 SDK.');
 
 // Root route to confirm the server is running
 app.get('/', (req, res) => {
@@ -29,18 +33,6 @@ app.get('/', (req, res) => {
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'healthy' });
 });
-
-// Initialize OpenAI with error handling
-let openai;
-try {
-  openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
-  });
-  console.log('OpenAI client initialized successfully');
-} catch (error) {
-  console.error('Error initializing OpenAI client:', error);
-  process.exit(1);
-}
 
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
