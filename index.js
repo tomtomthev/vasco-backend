@@ -5,7 +5,16 @@ console.log('JWT_SECRET:', process.env.JWT_SECRET ? 'Set' : 'Not set'); // Debug
 const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
-const OpenAI = require('openai');
+
+// Try different import methods for OpenAI
+let OpenAI;
+try {
+  OpenAI = require('openai');
+  console.log('OpenAI library loaded successfully');
+} catch (error) {
+  console.error('Error loading OpenAI library:', error);
+  process.exit(1);
+}
 
 const app = express();
 app.use(cors());
@@ -21,9 +30,17 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'healthy' });
 });
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Initialize OpenAI with error handling
+let openai;
+try {
+  openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+  console.log('OpenAI client initialized successfully');
+} catch (error) {
+  console.error('Error initializing OpenAI client:', error);
+  process.exit(1);
+}
 
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
