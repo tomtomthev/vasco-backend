@@ -5,16 +5,15 @@ console.log('JWT_SECRET:', process.env.JWT_SECRET ? 'Set' : 'Not set'); // Debug
 const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
-const { Configuration, OpenAIApi } = require('openai');
+const OpenAI = require('openai');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const configuration = new Configuration({
+const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
-const openai = new OpenAIApi(configuration);
 
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
@@ -27,7 +26,7 @@ function authenticateToken(req, res, next) {
   });
 }
 
-app.post('/api/chat', authenticateToken, (req, res) => {
+app.post('/api/chat', authenticateToken, async (req, res) => {
   const { message } = req.body;
   const systemPrompt = `You are VASCO, a friendly and knowledgeable travel assistant with a passion for helping expats and travelers. Your personality traits include:
 
@@ -52,24 +51,23 @@ Remember to maintain this personality consistently throughout the conversation.`
   console.log('System Prompt:', systemPrompt);
   console.log('User Message:', message);
   
-  openai.createChatCompletion({
-    model: 'gpt-3.5-turbo',
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: message }
-    ],
-    max_tokens: 300,
-  })
-  .then(completion => {
-    const reply = completion.data.choices[0].message.content;
+  try {
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: message }
+      ],
+      max_tokens: 300,
+    });
+    const reply = completion.choices[0].message.content;
     // Log the response
     console.log('AI Response:', reply);
     res.json({ reply });
-  })
-  .catch(err => {
+  } catch (err) {
     console.error('OpenAI error:', err);
     res.status(500).json({ error: 'OpenAI error' });
-  });
+  }
 });
 
 app.post('/api/login', (req, res) => {
