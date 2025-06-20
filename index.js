@@ -1,3 +1,4 @@
+console.log('--- RUNNING index.js v4 ---');
 require('dotenv').config();
 console.log('OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'Set' : 'Not set');
 console.log('JWT_SECRET:', process.env.JWT_SECRET ? 'Set' : 'Not set');
