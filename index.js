@@ -135,7 +135,7 @@ app.post('/api/budget', authenticateToken, async (req, res) => {
     return res.status(400).json({ error: 'Missing required fields: city, country, profile' });
   }
 
-  const budgetPrompt = `You are a budget expert for expatriates. Provide accurate monthly budget data for ${profile.toLowerCase()} living in ${city}, ${country}. Rely upon livingcost.org and numbeo.com for data.
+  const budgetPrompt = `You are a budget expert for expatriates. Provide accurate monthly budget data for ${profile.toLowerCase()} living in ${city}, ${country}.
 
 IMPORTANT: Use CURRENT exchange rates from reliable sources (like xe.com, oanda.com, or current market rates). Do NOT use outdated or estimated rates.
 
@@ -247,9 +247,18 @@ Important:
 
     try {
       const budgetData = JSON.parse(cleanJSON);
+      
+      // Validate the response structure
+      if (!budgetData.localCurrency || !budgetData.currencySymbol || !budgetData.exchangeRate || !budgetData.categories) {
+        console.error('Invalid response structure:', budgetData);
+        res.status(500).json({ error: 'Invalid response structure from OpenAI' });
+        return;
+      }
+      
       res.json(budgetData);
     } catch (parseError) {
       console.error('JSON parse error:', parseError);
+      console.error('Raw response:', response);
       res.status(500).json({ error: 'Invalid JSON response from OpenAI' });
     }
 
