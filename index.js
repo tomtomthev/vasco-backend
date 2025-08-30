@@ -137,6 +137,8 @@ app.post('/api/budget', authenticateToken, async (req, res) => {
 
   const budgetPrompt = `You are a budget expert for expatriates. Provide accurate monthly budget data for ${profile.toLowerCase()} living in ${city}, ${country}.
 
+IMPORTANT: Use CURRENT exchange rates from reliable sources (like xe.com, oanda.com, or current market rates). Do NOT use outdated or estimated rates.
+
 Return ONLY a JSON object with this exact structure (no other text):
 {
     "localCurrency": "CURRENCY_CODE",
@@ -215,11 +217,12 @@ Return ONLY a JSON object with this exact structure (no other text):
 Important:
 - Use realistic prices for ${city}, ${country}
 - Adjust for ${profile.toLowerCase()} profile (solo=1x, couple=1.6x, family=2.5x, business=2x)
-- Provide current exchange rate to USD
+- Use CURRENT exchange rates (as of today) - check real-time rates for accuracy
 - Use local currency code (EUR, GBP, JPY, INR, BRL, MXN, AED, CNY, etc.)
 - Include the actual currency symbol (€, £, ¥, ₹, R$, د.إ, ¥, etc.)
 - Calculate amountLocal = amountUSD * exchangeRate for each item
 - For China, use CNY currency code and ¥ symbol
+- For accurate exchange rates, use current market rates (not outdated rates)
 - Return ONLY the JSON, no explanations`;
 
   try {
