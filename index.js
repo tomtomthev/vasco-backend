@@ -135,7 +135,7 @@ app.post('/api/budget', authenticateToken, async (req, res) => {
     return res.status(400).json({ error: 'Missing required fields: city, country, profile' });
   }
 
-  const budgetPrompt = `You are a budget expert for expatriates. Provide accurate monthly budget data for ${profile.toLowerCase()} living in ${city}, ${country}.
+  const budgetPrompt = `You are a budget expert for expatriates. Provide accurate monthly budget data for ${profile.toLowerCase()} living in ${city}, ${country}. Rely upon livingcost.org and numbeo.com for data.
 
 IMPORTANT: Use CURRENT exchange rates from reliable sources (like xe.com, oanda.com, or current market rates). Do NOT use outdated or estimated rates.
 
