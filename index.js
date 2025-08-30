@@ -1,6 +1,7 @@
 console.log('--- V5: DEPLOYMENT FORCED. THIS MUST APPEAR. ---');
 require('dotenv').config();
-console.log('OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'Set' : 'Not set');
+console.log('CHAT_OPENAI_KEY:', process.env.CHAT_OPENAI_KEY ? 'Set' : 'Not set');
+console.log('BUDGET_OPENAI_KEY:', process.env.BUDGET_OPENAI_KEY ? 'Set' : 'Not set');
 console.log('JWT_SECRET:', process.env.JWT_SECRET ? 'Set' : 'Not set');
 
 const express = require('express');
@@ -13,17 +14,26 @@ app.use(cors());
 app.use(express.json());
 
 // --- Sanity Checks ---
-if (!process.env.OPENAI_API_KEY) {
-  console.error('FATAL ERROR: OPENAI_API_KEY environment variable is not set.');
-  process.exit(1); // Exit if the API key is missing
+if (!process.env.CHAT_OPENAI_KEY) {
+  console.error('FATAL ERROR: CHAT_OPENAI_KEY environment variable is not set.');
+  process.exit(1); // Exit if the chat API key is missing
+}
+
+if (!process.env.BUDGET_OPENAI_KEY) {
+  console.error('FATAL ERROR: BUDGET_OPENAI_KEY environment variable is not set.');
+  process.exit(1); // Exit if the budget API key is missing
 }
 
 // --- OpenAI Client Initialization ---
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+const chatOpenAI = new OpenAI({
+  apiKey: process.env.CHAT_OPENAI_KEY,
 });
 
-console.log('OpenAI client initialized successfully with V4 SDK.');
+const budgetOpenAI = new OpenAI({
+  apiKey: process.env.BUDGET_OPENAI_KEY,
+});
+
+console.log('OpenAI clients initialized successfully with V4 SDK.');
 
 // Root route to confirm the server is running
 app.get('/', (req, res) => {
@@ -93,7 +103,7 @@ Remember to maintain this personality consistently throughout the conversation.`
     
     console.log('Final messages array sent to OpenAI:', messages);
     
-    const completion = await openai.chat.completions.create({
+    const completion = await chatOpenAI.chat.completions.create({
       model: 'gpt-3.5-turbo',
       messages: messages,
       max_tokens: 300,
@@ -105,6 +115,133 @@ Remember to maintain this personality consistently throughout the conversation.`
   } catch (err) {
     console.error('OpenAI error:', err);
     res.status(500).json({ error: 'OpenAI error' });
+  }
+});
+
+// Budget API endpoint
+app.post('/api/budget', authenticateToken, async (req, res) => {
+  const { city, country, profile } = req.body;
+  
+  console.log('Budget request:', { city, country, profile });
+  
+  if (!city || !country || !profile) {
+    return res.status(400).json({ error: 'Missing required fields: city, country, profile' });
+  }
+  
+  const budgetPrompt = `You are a budget expert for expatriates. Provide accurate monthly budget data for ${profile.toLowerCase()} living in ${city}, ${country}.
+
+Return ONLY a JSON object with this exact structure (no other text):
+{
+    "localCurrency": "CURRENCY_CODE",
+    "exchangeRate": EXCHANGE_RATE_TO_USD,
+    "categories": [
+        {
+            "name": "Housing",
+            "subElements": [
+                {"name": "Monthly rent", "amountUSD": NUMBER},
+                {"name": "Utilities (water, gas, electricity)", "amountUSD": NUMBER},
+                {"name": "Internet / Wi-Fi", "amountUSD": NUMBER},
+                {"name": "TV / Streaming subscription", "amountUSD": NUMBER},
+                {"name": "Home insurance", "amountUSD": NUMBER},
+                {"name": "Security deposit", "amountUSD": NUMBER},
+                {"name": "Real estate agent fees", "amountUSD": NUMBER}
+            ]
+        },
+        {
+            "name": "Daily Life",
+            "subElements": [
+                {"name": "Groceries", "amountUSD": NUMBER},
+                {"name": "Hygiene products", "amountUSD": NUMBER},
+                {"name": "Clothing / footwear", "amountUSD": NUMBER},
+                {"name": "Local SIM or eSIM", "amountUSD": NUMBER},
+                {"name": "Restaurants", "amountUSD": NUMBER},
+                {"name": "Social outings / nightlife", "amountUSD": NUMBER},
+                {"name": "Cloud subscription (Google, Apple, etc.)", "amountUSD": NUMBER}
+            ]
+        },
+        {
+            "name": "Transport",
+            "subElements": [
+                {"name": "Public transport pass", "amountUSD": NUMBER},
+                {"name": "Single tickets (bus, metro, train)", "amountUSD": NUMBER},
+                {"name": "Car rental", "amountUSD": NUMBER},
+                {"name": "Fuel", "amountUSD": NUMBER}
+            ]
+        },
+        {
+            "name": "Health",
+            "subElements": [
+                {"name": "Local or international health insurance", "amountUSD": NUMBER},
+                {"name": "Medical consultations", "amountUSD": NUMBER},
+                {"name": "Dental care", "amountUSD": NUMBER},
+                {"name": "Hospitalization", "amountUSD": NUMBER},
+                {"name": "Vaccines", "amountUSD": NUMBER},
+                {"name": "Mental health / therapy", "amountUSD": NUMBER}
+            ]
+        },
+        {
+            "name": "Administrative",
+            "subElements": [
+                {"name": "Visa / residence permit", "amountUSD": NUMBER},
+                {"name": "Local bank fees", "amountUSD": NUMBER},
+                {"name": "Exchange rate / conversion fee", "amountUSD": NUMBER},
+                {"name": "International transfer fees", "amountUSD": NUMBER},
+                {"name": "Multi-currency card", "amountUSD": NUMBER}
+            ]
+        },
+        {
+            "name": "Leisure & Wellness",
+            "subElements": [
+                {"name": "Gym membership", "amountUSD": NUMBER},
+                {"name": "Entertainment (cinema, museums, concerts)", "amountUSD": NUMBER},
+                {"name": "Travel / excursions", "amountUSD": NUMBER},
+                {"name": "Classes (yoga, dance, sport)", "amountUSD": NUMBER},
+                {"name": "Cultural activities / social clubs", "amountUSD": NUMBER},
+                {"name": "Music streaming (Spotify, Deezer…)", "amountUSD": NUMBER},
+                {"name": "Hairdresser / beauty treatments", "amountUSD": NUMBER}
+            ]
+        }
+    ]
+}
+
+Important:
+- Use realistic prices for ${city}, ${country}
+- Adjust for ${profile.toLowerCase()} profile (solo=1x, couple=1.6x, family=2.5x, business=2x)
+- Provide current exchange rate to USD
+- Use local currency code (EUR, GBP, JPY, etc.)
+- Return ONLY the JSON, no explanations`;
+
+  try {
+    const completion = await budgetOpenAI.chat.completions.create({
+      model: 'gpt-4',
+      messages: [
+        { role: 'system', content: 'You are a budget expert. Provide accurate, realistic budget data in JSON format only.' },
+        { role: 'user', content: budgetPrompt }
+      ],
+      temperature: 0.1,
+      max_tokens: 2000,
+    });
+    
+    const response = completion.choices[0].message.content;
+    console.log('Budget API Response:', response);
+    
+    // Clean the JSON response
+    const cleanJSON = response.trim()
+      .replace(/```json/g, '')
+      .replace(/```/g, '')
+      .trim();
+    
+    try {
+      const budgetData = JSON.parse(cleanJSON);
+      res.json(budgetData);
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      res.status(500).json({ error: 'Invalid JSON response from OpenAI' });
+    }
+    
+  } catch (err) {
+    console.error('Budget API error:', err);
+    res.status(500).json({ error: 'Budget calculation failed' });
   }
 });
 
